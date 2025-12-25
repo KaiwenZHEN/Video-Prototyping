@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wan Video Generator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* 简单的加载动画 */
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 2s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen text-gray-800">
+
+    <div class="container mx-auto px-4 py-8 max-w-4xl">
+        <h1 class="text-3xl font-bold text-center mb-8 text-blue-600">Wan Video Studio</h1>
+
+        <div class="flex justify-center mb-6 space-x-4">
+            <button class="px-4 py-2 bg-blue-600 text-white rounded shadow" disabled>Pipeline 1: 文生视频</button>
+            <button class="px-4 py-2 bg-gray-300 text-gray-500 rounded cursor-not-allowed">Pipeline 2: 图生视频</button>
+            <button class="px-4 py-2 bg-gray-300 text-gray-500 rounded cursor-not-allowed">Pipeline 3: 高级精修</button>
+        </div>
+
+        <div class="bg-white p-6 rounded-lg shadow-md">
+            <div class="grid grid-cols-1 gap-4 mb-6">
+                
+                <div>
+                    <label class="block font-semibold mb-2">提示词 (Prompt)</label>
+                    <textarea id="prompt" rows="3" class="w-full p-2 border rounded focus:ring focus:ring-blue-300" placeholder="例如：一只穿着宇航服的小猫在月球上奔跑..."></textarea>
+                </div>
+
+                <div>
+                    <label class="block font-semibold mb-2">反向提示词 (Negative Prompt)</label>
+                    <textarea id="negative_prompt" rows="2" class="w-full p-2 border rounded focus:ring focus:ring-red-300" placeholder="例如：低质量, 模糊, 变形..."></textarea>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-sm font-semibold mb-1">分辨率 (Size)</label>
+                        <select id="size" class="w-full p-2 border rounded">
+                            <option value="1280*720" selected>1280*720 (16:9)</option>
+                            <option value="720*1280">720*1280 (9:16)</option>
+                            <option value="1920*1080">1920*1080 (1080P)</option>
+                            <option value="1088*832">1088*832 (4:3)</option>
+                            <option value="960*960">960*960 (1:1)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold mb-1">时长 (Duration)</label>
+                        <select id="duration" class="w-full p-2 border rounded">
+                            <option value="5" selected>5 秒</option>
+                            <option value="10">10 秒 (耗时更长)</option>
+                        </select>
+                    </div>
+                    <div class="flex items-center space-x-4 mt-6">
+                        <label class="flex items-center space-x-2 cursor-pointer">
+                            <input type="checkbox" id="audio" checked class="form-checkbox text-blue-600">
+                            <span>生成音效</span>
+                        </label>
+                        <label class="flex items-center space-x-2 cursor-pointer">
+                            <input type="checkbox" id="prompt_extend" checked class="form-checkbox text-blue-600">
+                            <span>智能扩写</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <button onclick="startGeneration()" id="generateBtn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded transition duration-200">
+                开始生成视频
+            </button>
+
+            <div id="statusArea" class="hidden mt-6 p-4 border rounded bg-gray-50">
+                <div class="flex items-center space-x-3">
+                    <div id="loader" class="loader"></div>
+                    <div>
+                        <p class="font-bold text-lg" id="statusText">正在提交任务...</p>
+                        <p class="text-sm text-gray-500" id="taskIdDisplay"></p>
+                    </div>
+                </div>
+            </div>
+
+            <div id="resultArea" class="hidden mt-6">
+                <h3 class="text-xl font-bold mb-3">生成结果：</h3>
+                <video id="videoPlayer" controls class="w-full rounded shadow-lg bg-black" style="max-height: 500px;"></video>
+                <div class="mt-2 text-right">
+                    <a id="downloadLink" href="#" target="_blank" class="text-blue-600 underline text-sm">下载视频</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = "http://127.0.0.1:8000/api";
+        let pollInterval = null;
+
+        async function startGeneration() {
+            const prompt = document.getElementById('prompt').value;
+            if (!prompt) {
+                alert("请输入提示词！");
+                return;
+            }
+
+            // UI 状态更新
+            const btn = document.getElementById('generateBtn');
+            const statusArea = document.getElementById('statusArea');
+            const resultArea = document.getElementById('resultArea');
+            
+            btn.disabled = true;
+            btn.innerText = "正在请求...";
+            statusArea.classList.remove('hidden');
+            resultArea.classList.add('hidden');
+            document.getElementById('statusText').innerText = "正在提交任务...";
+            document.getElementById('loader').classList.remove('hidden');
+
+            // 准备数据
+            const payload = {
+                prompt: prompt,
+                negative_prompt: document.getElementById('negative_prompt').value || null,
+                size: document.getElementById('size').value,
+                duration: parseInt(document.getElementById('duration').value),
+                audio: document.getElementById('audio').checked,
+                prompt_extend: document.getElementById('prompt_extend').checked
+            };
+
+            try {
+                // 1. 调用后端提交任务
+                const response = await fetch(`${API_BASE}/generate`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) throw new Error("提交失败");
+
+                const data = await response.json();
+                const taskId = data.task_id;
+                
+                document.getElementById('taskIdDisplay').innerText = `Task ID: ${taskId}`;
+                document.getElementById('statusText').innerText = "任务排队中 (PENDING)...";
+
+                // 2. 开始轮询
+                pollStatus(taskId);
+
+            } catch (error) {
+                alert("错误: " + error.message);
+                resetUI();
+            }
+        }
+
+        function pollStatus(taskId) {
+            pollInterval = setInterval(async () => {
+                try {
+                    const response = await fetch(`${API_BASE}/status/${taskId}`);
+                    const data = await response.json();
+
+                    const status = data.status;
+                    const statusText = document.getElementById('statusText');
+
+                    if (status === "PENDING") {
+                        statusText.innerText = "任务排队中...";
+                    } else if (status === "RUNNING") {
+                        statusText.innerText = "AI 正在生成视频，请稍候 (约需1-5分钟)...";
+                    } else if (status === "SUCCEEDED") {
+                        clearInterval(pollInterval);
+                        showResult(data.video_url);
+                        resetUI(true);
+                    } else if (status === "FAILED" || status === "CANCELED") {
+                        clearInterval(pollInterval);
+                        statusText.innerText = "生成失败: " + data.progress_msg;
+                        document.getElementById('loader').classList.add('hidden');
+                        document.getElementById('generateBtn').disabled = false;
+                        document.getElementById('generateBtn').innerText = "重新生成";
+                    }
+
+                } catch (e) {
+                    console.error("Polling error", e);
+                }
+            }, 5000); // 每5秒查询一次
+        }
+
+        function showResult(url) {
+            const resultArea = document.getElementById('resultArea');
+            const videoPlayer = document.getElementById('videoPlayer');
+            const downloadLink = document.getElementById('downloadLink');
+
+            resultArea.classList.remove('hidden');
+            videoPlayer.src = url;
+            downloadLink.href = url;
+            
+            document.getElementById('statusText').innerText = "生成成功！";
+            document.getElementById('loader').classList.add('hidden');
+        }
+
+        function resetUI(success = false) {
+            const btn = document.getElementById('generateBtn');
+            btn.disabled = false;
+            btn.innerText = success ? "生成另一个视频" : "开始生成视频";
+        }
+    </script>
+</body>
+</html>
