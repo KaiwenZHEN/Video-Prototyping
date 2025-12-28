@@ -38,15 +38,25 @@ if not API_KEY:
 
 # 阿里云 Wan API 配置
 BASE_URL = "https://dashscope-intl.aliyuncs.com/api/v1"
-MODEL_NAME = "wan2.6-t2v"
+MODEL_NAME = "wan2.5-t2v-preview"
 
 class VideoGenerationRequest(BaseModel):
     prompt: str
     negative_prompt: Optional[str] = None
-    size: str = "1280*720"
+    size: str = "1920*1080"
     duration: int = 5
     audio: bool = True
     prompt_extend: bool = True
+
+class ImageVideoGenerationRequest(BaseModel):
+    prompt: Optional[str] = None
+    negative_prompt: Optional[str] = None
+    img_url: str
+    size: str = "1920*1080"
+    duration: int = 5
+    prompt_extend: bool = True
+    audio: bool = True
+    seed: Optional[int] = None
 
 # --- 核心功能函数 ---
 
@@ -73,6 +83,40 @@ async def call_wan_api_create(client: httpx.AsyncClient, data: VideoGenerationRe
         }
     }
 
+    return await _execute_api_call(client, url, headers, payload)
+
+async def call_wan_api_create_image(client: httpx.AsyncClient, data: ImageVideoGenerationRequest):
+    url = f"{BASE_URL}/services/aigc/video-generation/video-synthesis"
+    
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {API_KEY}",
+        "X-DashScope-Async": "enable"
+    }
+
+    payload = {
+        "model": "wan2.5-i2v-preview",
+        "input": {
+            "img_url": data.img_url
+        },
+        "parameters": {
+            "size": data.size,
+            "duration": data.duration,
+            "prompt_extend": data.prompt_extend,
+            "audio": data.audio
+        }
+    }
+
+    if data.prompt:
+        payload["input"]["prompt"] = data.prompt
+    if data.negative_prompt:
+        payload["input"]["negative_prompt"] = data.negative_prompt
+    if data.seed is not None:
+        payload["parameters"]["seed"] = data.seed
+
+    return await _execute_api_call(client, url, headers, payload)
+
+async def _execute_api_call(client, url, headers, payload):
     max_retries = 3
     for attempt in range(max_retries):
         try:
@@ -126,6 +170,15 @@ async def generate_video(request: VideoGenerationRequest, req: Request):
     # 从 app.state 获取全局 client
     client = req.app.state.http_client
     task_id = await call_wan_api_create(client, request)
+    return {"task_id": task_id, "message": "Task created successfully"}
+
+@app.post("/api/generate_image")
+async def generate_image_video(request: ImageVideoGenerationRequest, req: Request):
+    if not API_KEY:
+        raise HTTPException(status_code=500, detail="API Key not configured on server.")
+    
+    client = req.app.state.http_client
+    task_id = await call_wan_api_create_image(client, request)
     return {"task_id": task_id, "message": "Task created successfully"}
 
 @app.get("/api/status/{task_id}")

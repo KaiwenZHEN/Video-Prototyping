@@ -24,51 +24,109 @@
         <h1 class="text-3xl font-bold text-center mb-8 text-blue-600">Wan Video Studio</h1>
 
         <div class="flex justify-center mb-6 space-x-4">
-            <button class="px-4 py-2 bg-blue-600 text-white rounded shadow" disabled>Pipeline 1: 文生视频</button>
-            <button class="px-4 py-2 bg-gray-300 text-gray-500 rounded cursor-not-allowed">Pipeline 2: 图生视频</button>
+            <button id="btn-p1" onclick="switchPipeline(1)" class="px-4 py-2 bg-blue-600 text-white rounded shadow transition">Pipeline 1: 文生视频</button>
+            <button id="btn-p2" onclick="switchPipeline(2)" class="px-4 py-2 bg-gray-300 text-gray-700 rounded shadow transition hover:bg-gray-400">Pipeline 2: 图生视频</button>
             <button class="px-4 py-2 bg-gray-300 text-gray-500 rounded cursor-not-allowed">Pipeline 3: 高级精修</button>
         </div>
 
         <div class="bg-white p-6 rounded-lg shadow-md">
-            <div class="grid grid-cols-1 gap-4 mb-6">
-                
-                <div>
-                    <label class="block font-semibold mb-2">提示词 (Prompt)</label>
-                    <textarea id="prompt" rows="3" class="w-full p-2 border rounded focus:ring focus:ring-blue-300" placeholder="例如：一只穿着宇航服的小猫在月球上奔跑..."></textarea>
-                </div>
-
-                <div>
-                    <label class="block font-semibold mb-2">反向提示词 (Negative Prompt)</label>
-                    <textarea id="negative_prompt" rows="2" class="w-full p-2 border rounded focus:ring focus:ring-red-300" placeholder="例如：低质量, 模糊, 变形..."></textarea>
-                </div>
-
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            
+            <!-- Pipeline 1: Text to Video -->
+            <div id="pipeline1-form">
+                <div class="grid grid-cols-1 gap-4 mb-6">
                     <div>
-                        <label class="block text-sm font-semibold mb-1">分辨率 (Size)</label>
-                        <select id="size" class="w-full p-2 border rounded">
-                            <option value="1280*720" selected>1280*720 (16:9)</option>
-                            <option value="720*1280">720*1280 (9:16)</option>
-                            <option value="1920*1080">1920*1080 (1080P)</option>
-                            <option value="1088*832">1088*832 (4:3)</option>
-                            <option value="960*960">960*960 (1:1)</option>
-                        </select>
+                        <label class="block font-semibold mb-2">提示词 (Prompt)</label>
+                        <textarea id="prompt" rows="3" class="w-full p-2 border rounded focus:ring focus:ring-blue-300" placeholder="例如：一只穿着宇航服的小猫在月球上奔跑..."></textarea>
                     </div>
+
                     <div>
-                        <label class="block text-sm font-semibold mb-1">时长 (Duration)</label>
-                        <select id="duration" class="w-full p-2 border rounded">
-                            <option value="5" selected>5 秒</option>
-                            <option value="10">10 秒 (耗时更长)</option>
-                        </select>
+                        <label class="block font-semibold mb-2">反向提示词 (Negative Prompt)</label>
+                        <textarea id="negative_prompt" rows="2" class="w-full p-2 border rounded focus:ring focus:ring-red-300" placeholder="例如：低质量, 模糊, 变形..."></textarea>
                     </div>
-                    <div class="flex items-center space-x-4 mt-6">
-                        <label class="flex items-center space-x-2 cursor-pointer">
-                            <input type="checkbox" id="audio" checked class="form-checkbox text-blue-600">
-                            <span>生成音效</span>
-                        </label>
-                        <label class="flex items-center space-x-2 cursor-pointer">
-                            <input type="checkbox" id="prompt_extend" checked class="form-checkbox text-blue-600">
-                            <span>智能扩写</span>
-                        </label>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-sm font-semibold mb-1">分辨率 (Size)</label>
+                            <select id="size" class="w-full p-2 border rounded">
+                                <option value="1920*1080" selected>1920*1080 (1080P 16:9)</option>
+                                <option value="1080*1920">1080*1920 (1080P 9:16)</option>
+                                <option value="1280*720">1280*720 (720P 16:9)</option>
+                                <option value="720*1280">720*1280 (720P 9:16)</option>
+                                <option value="832*480">832*480 (480P 16:9)</option>
+                                <option value="480*832">480*832 (480P 9:16)</option>
+                                <option value="624*624">624*624 (480P 1:1)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold mb-1">时长 (Duration)</label>
+                            <select id="duration" class="w-full p-2 border rounded">
+                                <option value="5" selected>5 秒</option>
+                                <option value="10">10 秒 (耗时更长)</option>
+                            </select>
+                        </div>
+                        <div class="flex items-center space-x-4 mt-6">
+                            <label class="flex items-center space-x-2 cursor-pointer">
+                                <input type="checkbox" id="audio" checked class="form-checkbox text-blue-600">
+                                <span>生成音效</span>
+                            </label>
+                            <label class="flex items-center space-x-2 cursor-pointer">
+                                <input type="checkbox" id="prompt_extend" checked class="form-checkbox text-blue-600">
+                                <span>智能扩写</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pipeline 2: Image to Video -->
+            <div id="pipeline2-form" class="hidden">
+                <div class="grid grid-cols-1 gap-4 mb-6">
+                    <div>
+                        <label class="block font-semibold mb-2">上传图片 (Image)</label>
+                        <input type="file" id="p2_image" accept="image/png, image/jpeg, image/bmp, image/webp" class="w-full p-2 border rounded focus:ring focus:ring-blue-300">
+                        <p class="text-sm text-gray-500 mt-1">支持 JPG, PNG, BMP, WEBP。最大 10MB。分辨率 [360, 2000]。</p>
+                    </div>
+
+                    <div>
+                        <label class="block font-semibold mb-2">提示词 (Prompt) <span class="text-gray-400 font-normal">(可选)</span></label>
+                        <textarea id="p2_prompt" rows="3" class="w-full p-2 border rounded focus:ring focus:ring-blue-300" placeholder="描述图片内容或期望的动态效果..."></textarea>
+                    </div>
+
+                    <div>
+                        <label class="block font-semibold mb-2">反向提示词 (Negative Prompt) <span class="text-gray-400 font-normal">(可选)</span></label>
+                        <textarea id="p2_negative_prompt" rows="2" class="w-full p-2 border rounded focus:ring focus:ring-red-300" placeholder="例如：低质量, 模糊, 变形..."></textarea>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-sm font-semibold mb-1">分辨率 (Size)</label>
+                            <select id="p2_size" class="w-full p-2 border rounded">
+                                <option value="1920*1080" selected>1920*1080 (1080P 16:9)</option>
+                                <option value="1080*1920">1080*1920 (1080P 9:16)</option>
+                                <option value="1280*720">1280*720 (720P 16:9)</option>
+                                <option value="720*1280">720*1280 (720P 9:16)</option>
+                                <option value="832*480">832*480 (480P 16:9)</option>
+                                <option value="480*832">480*832 (480P 9:16)</option>
+                                <option value="624*624">624*624 (480P 1:1)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold mb-1">时长 (Duration)</label>
+                            <select id="p2_duration" class="w-full p-2 border rounded">
+                                <option value="5" selected>5 秒</option>
+                                <option value="10">10 秒 (耗时更长)</option>
+                            </select>
+                        </div>
+                        <div class="flex items-center space-x-4 mt-6">
+                            <label class="flex items-center space-x-2 cursor-pointer">
+                                <input type="checkbox" id="p2_audio" checked class="form-checkbox text-blue-600">
+                                <span>生成音效</span>
+                            </label>
+                            <label class="flex items-center space-x-2 cursor-pointer">
+                                <input type="checkbox" id="p2_prompt_extend" checked class="form-checkbox text-blue-600">
+                                <span>智能扩写</span>
+                            </label>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -100,14 +158,38 @@
     <script>
         const API_BASE = "http://127.0.0.1:8000/api";
         let pollInterval = null;
+        let currentPipeline = 1;
+
+        function switchPipeline(pipelineId) {
+            currentPipeline = pipelineId;
+            
+            // Update Buttons
+            const btnP1 = document.getElementById('btn-p1');
+            const btnP2 = document.getElementById('btn-p2');
+            
+            if (pipelineId === 1) {
+                btnP1.className = "px-4 py-2 bg-blue-600 text-white rounded shadow transition";
+                btnP2.className = "px-4 py-2 bg-gray-300 text-gray-700 rounded shadow transition hover:bg-gray-400";
+                document.getElementById('pipeline1-form').classList.remove('hidden');
+                document.getElementById('pipeline2-form').classList.add('hidden');
+            } else {
+                btnP1.className = "px-4 py-2 bg-gray-300 text-gray-700 rounded shadow transition hover:bg-gray-400";
+                btnP2.className = "px-4 py-2 bg-blue-600 text-white rounded shadow transition";
+                document.getElementById('pipeline1-form').classList.add('hidden');
+                document.getElementById('pipeline2-form').classList.remove('hidden');
+            }
+        }
+
+        function fileToBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = error => reject(error);
+            });
+        }
 
         async function startGeneration() {
-            const prompt = document.getElementById('prompt').value;
-            if (!prompt) {
-                alert("请输入提示词！");
-                return;
-            }
-
             // UI 状态更新
             const btn = document.getElementById('generateBtn');
             const statusArea = document.getElementById('statusArea');
@@ -120,25 +202,56 @@
             document.getElementById('statusText').innerText = "正在提交任务...";
             document.getElementById('loader').classList.remove('hidden');
 
-            // 准备数据
-            const payload = {
-                prompt: prompt,
-                negative_prompt: document.getElementById('negative_prompt').value || null,
-                size: document.getElementById('size').value,
-                duration: parseInt(document.getElementById('duration').value),
-                audio: document.getElementById('audio').checked,
-                prompt_extend: document.getElementById('prompt_extend').checked
-            };
-
             try {
+                let payload = {};
+                let endpoint = "";
+
+                if (currentPipeline === 1) {
+                    const prompt = document.getElementById('prompt').value;
+                    if (!prompt) throw new Error("请输入提示词！");
+
+                    payload = {
+                        prompt: prompt,
+                        negative_prompt: document.getElementById('negative_prompt').value || null,
+                        size: document.getElementById('size').value,
+                        duration: parseInt(document.getElementById('duration').value),
+                        audio: document.getElementById('audio').checked,
+                        prompt_extend: document.getElementById('prompt_extend').checked
+                    };
+                    endpoint = `${API_BASE}/generate`;
+
+                } else if (currentPipeline === 2) {
+                    const fileInput = document.getElementById('p2_image');
+                    if (fileInput.files.length === 0) throw new Error("请上传一张图片！");
+                    
+                    const file = fileInput.files[0];
+                    if (file.size > 10 * 1024 * 1024) throw new Error("图片大小不能超过 10MB");
+
+                    const base64Image = await fileToBase64(file);
+
+                    payload = {
+                        img_url: base64Image,
+                        prompt: document.getElementById('p2_prompt').value || null,
+                        negative_prompt: document.getElementById('p2_negative_prompt').value || null,
+                        size: document.getElementById('p2_size').value,
+                        duration: parseInt(document.getElementById('p2_duration').value),
+                        prompt_extend: document.getElementById('p2_prompt_extend').checked,
+                        audio: document.getElementById('p2_audio').checked
+                    };
+                    endpoint = `${API_BASE}/generate_image`;
+                }
+
                 // 1. 调用后端提交任务
-                const response = await fetch(`${API_BASE}/generate`, {
+                const response = await fetch(endpoint, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });
 
-                if (!response.ok) throw new Error("提交失败");
+                if (!response.ok) {
+                    const errData = await response.json();
+                    throw new Error(errData.detail || "提交失败");
+                }
 
                 const data = await response.json();
                 const taskId = data.task_id;
@@ -152,6 +265,8 @@
             } catch (error) {
                 alert("错误: " + error.message);
                 resetUI();
+                document.getElementById('statusText').innerText = "发生错误";
+                document.getElementById('loader').classList.add('hidden');
             }
         }
 
